@@ -414,9 +414,11 @@ int COasisController::gotoPosition(long nPos)
 
     if (nPos>m_Oasis_Settings.nMaxPos)
         return ERR_LIMITSEXCEEDED;
-    // clear buffer ans set  cHIDBuffer[0] to report ID 0
-    memset(cHIDBuffer, 0, REPORT_SIZE);
+
     frameMove.position = htonl((unsigned int)nPos);
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameMove, sizeof(FrameMoveTo));
 
     nNbTimeOut = 0;
     m_nTargetPos = nPos;
@@ -426,7 +428,6 @@ int COasisController::gotoPosition(long nPos)
         m_sLogFile.flush();
     #endif
 
-    memcpy(cHIDBuffer+1, (byte*)&frameMove, sizeof(FrameMoveTo));
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
         hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
@@ -555,11 +556,12 @@ int COasisController::getVersions()
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+    DeclareFrameHead(frame, CODE_GET_VERSION);
     
-    // clear buffer ans set  cHIDBuffer[0] to report ID 0
+    // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
-    cHIDBuffer[1] = CODE_GET_VERSION; // command
-    cHIDBuffer[2] = 0; // command length
+    memcpy(cHIDBuffer+1, (byte*)&frame, sizeof(FrameHead));
+
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
     hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getVersions] sending : " << std::endl << m_hexOut << std::endl;
@@ -598,7 +600,7 @@ int COasisController::getVersions()
 
 void COasisController::getVersions(std::string &sVersion)
 {
-
+    sVersion.assign(m_Oasis_Settings.sVersion);
 }
 
 int COasisController::getModel()
@@ -611,10 +613,11 @@ int COasisController::getModel()
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
-    // clear buffer ans set  cHIDBuffer[0] to report ID 0
+    DeclareFrameHead(frame, CODE_GET_PRODUCT_MODEL);
+
+    // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
-    cHIDBuffer[1] = CODE_GET_PRODUCT_MODEL; // command
-    cHIDBuffer[2] = 0; // command length
+    memcpy(cHIDBuffer+1, (byte*)&frame, sizeof(FrameHead));
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
     hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
@@ -655,13 +658,12 @@ int COasisController::getModel()
 
 void COasisController::getModel(std::string &sModel)
 {
-
+    sModel.assign(m_Oasis_Settings.sModel);
 }
 
 int COasisController::getSerial()
 {
     int nErr = PLUGIN_OK;
-    byte cHIDBuffer[REPORT_SIZE];
     wchar_t TmpStr[128];
     int nNbTimeOut = 0;
     std::wstring ws;
@@ -670,7 +672,6 @@ int COasisController::getSerial()
         return ERR_COMMNOLINK;
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getSerial]" << std::endl;
     m_sLogFile.flush();
 #endif
@@ -699,7 +700,6 @@ int COasisController::getSerial()
     m_Oasis_Settings.sSerial.assign(ws.begin(), ws.end());
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getSerial] serial : " << m_Oasis_Settings.sSerial << std::endl;
     m_sLogFile.flush();
 #endif
@@ -727,7 +727,7 @@ int COasisController::setMaxStep(unsigned int nMaxStep)
     frameConfig.mask = MASK_MAX_STEP;
     frameConfig.maxStep = nMaxStep;
 
-    // clear buffer ans set  cHIDBuffer[0] to report ID 0
+    // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
@@ -799,7 +799,7 @@ int COasisController::setBacklash(unsigned int nBacklash)
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
     frameConfig.mask = MASK_BACKLASH;
     frameConfig.backlash = nBacklash;
-    // clear buffer ans set  cHIDBuffer[0] to report ID 0
+    // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
