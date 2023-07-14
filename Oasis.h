@@ -58,6 +58,18 @@
 #define AD_MAX              4095
 
 
+#define MASK_MAX_STEP           0x00000001
+#define MASK_BACKLASH           0x00000002
+#define MASK_BACKLASH_DIRECTION 0x00000004
+#define MASK_REVERSE_DIRECTION  0x00000008
+#define MASK_SPEED              0x00000010
+#define MASK_BEEP_ON_MOVE       0x00000020
+#define MASK_BEEP_ON_STARTUP    0x00000040
+#define MASK_BLUETOOTH          0x00000080
+#define MASK_ALL                0xFFFFFFFF
+
+
+
 enum Oasis_Errors    {PLUGIN_OK = 0, NOT_CONNECTED, Oasis_CANT_CONNECT, Oasis_BAD_CMD_RESPONSE, COMMAND_FAILED};
 enum MotorDir       {NORMAL = 0 , REVERSE};
 enum MotorStatus    {IDLE = 0, MOVING};
@@ -146,9 +158,29 @@ public:
     void        getModel(std::string &sModel);
     void        getSerial(std::string &sSerial);
 
+    int         setMaxStep(unsigned int nMaxStep);
+
+    void        getBacklash(unsigned int &nBacklash);
+    int         setBacklash(unsigned int nBacklash);
+    void        getBacklashDirection(unsigned int &nBacklashDir);
+    int         setBacklashDirection(unsigned int nBacklashDir);
+    void        getReverse(bool &bReversed);
+    int         setReverse(bool bReversed);
+    void        getMaxSpeed(unsigned int &nSpeed);
+    int         setMaxSpeed(unsigned int nSpeed);
+    void        getBeepOnMove(bool &bEnabled);
+    int         setBeepOnMove(bool bEnabled);
+    void        getBeepOnStartup(bool &bEnabled);
+    int         setBeepOnStartup(bool bEnabled);
+    void        getBluetoothEnabled(bool &bEnabled);
+    int         setBluetoothEnabled(bool bEnabled);
+    void        getBluetoothName(std::string &sName);
+    int         setBluetoothName(std::string sName);
+    void        getFriendlyName(std::string &sName);
+    int         setFriendlyName(std::string sName);
+
     void        parseResponse(byte *Buffer, int nLength);
     int         sendSettings();
-
 
 
     std::mutex          m_GlobalMutex;
@@ -213,7 +245,7 @@ protected:
     void    hexdump(const byte *inputData, int inputSize,  std::string &outHex);
     // timestamp for logs
     const std::string getTimeStamp();
-    std::string hexOut;
+    std::string m_hexOut;
     std::ofstream m_sLogFile;
     std::string m_sPlatform;
     std::string m_sLogfilePath;
