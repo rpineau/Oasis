@@ -74,14 +74,13 @@ enum Oasis_Errors    {PLUGIN_OK = 0, NOT_CONNECTED, Oasis_CANT_CONNECT, Oasis_BA
 enum MotorDir       {NORMAL = 0 , REVERSE};
 enum MotorStatus    {IDLE = 0, MOVING};
 enum TempSources    {INTERNAL, EXTERNAL};
-typedef unsigned char byte;
-typedef unsigned short word;
-
+typedef uint8_t byte;
+typedef uint16_t word;
 typedef struct Oasis_setting_atom {
     std::atomic<uint32_t>   nCurPos;
     std::atomic<uint32_t>   nMaxPos;
-    std::atomic<uint32_t>   bIsMoving;
-    std::atomic<uint32_t>   bIsReversed;
+    std::atomic<bool>   bIsMoving;
+    std::atomic<bool>   bIsReversed;
     std::string         sVersion;
     std::string         sModel;
     std::string         sSerial;
@@ -96,8 +95,11 @@ typedef struct Oasis_setting_atom {
     std::atomic<uint8_t> beepOnMove;
     std::atomic<uint8_t> beepOnStartup;
     std::atomic<uint8_t> bluetoothOn;
+    std::string          sBluetoothName;
+    std::string          sFriendlyName;
 } Oasis_Settings_Atom;
 
+/*
 
 typedef struct Oasis_setting {
     std::atomic<uint32_t>   nCurPos;
@@ -118,8 +120,10 @@ typedef struct Oasis_setting {
     std::atomic<uint8_t> beepOnMove;
     std::atomic<uint8_t> beepOnStartup;
     std::atomic<uint8_t> bluetoothOn;
+    std::string         sBluetoothName;
+    std::string         sFriendlyName;
 } Oasis_Settings;
-
+*/
 
 class COasisController
 {
@@ -162,12 +166,12 @@ public:
 
     void        getBacklash(unsigned int &nBacklash);
     int         setBacklash(unsigned int nBacklash);
-    void        getBacklashDirection(unsigned int &nBacklashDir);
-    int         setBacklashDirection(unsigned int nBacklashDir);
+    void        getBacklashDirection(uint8_t &nBacklashDir);
+    int         setBacklashDirection(uint8_t nBacklashDir);
     void        getReverse(bool &bReversed);
     int         setReverse(bool bReversed);
-    void        getMaxSpeed(unsigned int &nSpeed);
-    int         setMaxSpeed(unsigned int nSpeed);
+    void        getSpeed(unsigned int &nSpeed);
+    int         setSpeed(unsigned int nSpeed);
     void        getBeepOnMove(bool &bEnabled);
     int         setBeepOnMove(bool bEnabled);
     void        getBeepOnStartup(bool &bEnabled);
@@ -200,18 +204,14 @@ protected:
 
     void            startThreads();
     void            stopThreads();
-
-    int             Get32(const byte *buffer, int position);
-    int             Get16(const byte *buffer, int position);
-
-    void            put32(byte *buffer, int position, int value);
-    void            put16(byte *buffer, int position, int value);
-    void            copyCurrentSettingsToWriteSettings();
-
+    int             sendCommand(byte *cHIDBuffer);
+    
     int         getConfig();
     int         getVersions();
     int         getModel();
     int         getSerial();
+    int         getBluetoothName();
+    int         getFriendlyName();
     int         GetNTCTemperature(int ad);
 
     std::string         m_sSerialNumber;
@@ -228,7 +228,7 @@ protected:
 
     // the read thread keep updating these
     Oasis_Settings_Atom m_Oasis_Settings;
-    Oasis_Settings      m_Oasis_Settings_Write;
+    // Oasis_Settings      m_Oasis_Settings_Write;
 
     // threads
     bool                m_ThreadsAreRunning;

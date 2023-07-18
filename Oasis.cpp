@@ -199,6 +199,48 @@ void COasisController::Disconnect()
 #endif
 }
 
+int COasisController::sendCommand(byte *cHIDBuffer)
+{
+    int nErr = PLUGIN_OK;
+    int nByteWriten = 0;
+    int nNbTimeOut = 0;
+
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [sendCommand] sending : " << std::endl << m_hexOut << std::endl;
+    m_sLogFile.flush();
+#endif
+    nNbTimeOut = 0;
+    while(nNbTimeOut < 3) {
+        if(m_DevAccessMutex.try_lock()) {
+            nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
+            m_DevAccessMutex.unlock();
+            if(nByteWriten<0) {
+                nNbTimeOut++;
+                std::this_thread::yield();
+            }
+            else {
+                break; // all good, no need to retry
+            }
+        }
+        else {
+            nNbTimeOut++;
+            std::this_thread::yield();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
+    }
+
+    if(nNbTimeOut>=3) {
+#ifdef PLUGIN_DEBUG
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [sendCommand] ERROR Timeout sending command : " << std::endl;
+        m_sLogFile.flush();
+#endif
+        nErr = ERR_CMDFAILED;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
+    return nErr;
+}
+
 int COasisController::listFocusers(std::vector<std::string> &focuserSNList)
 {
     int nErr = PLUGIN_OK;
@@ -293,9 +335,7 @@ void COasisController::stopThreads()
 int COasisController::getConfig()
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
@@ -305,39 +345,7 @@ int COasisController::getConfig()
     cHIDBuffer[1] = CODE_GET_CONFIG; // command
     cHIDBuffer[2] = 0; // command length
 
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getConfig] sending : " << std::endl << m_hexOut << std::endl;
-    m_sLogFile.flush();
-#endif
-    nNbTimeOut = 0;
-    while(nNbTimeOut < 3) {
-        if(m_DevAccessMutex.try_lock()) {
-            nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-            m_DevAccessMutex.unlock();
-            if(nByteWriten<0) {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            else {
-                break; // all good, no need to retry
-            }
-        }
-        else {
-            nNbTimeOut++;
-            std::this_thread::yield();
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getConfig] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
@@ -345,9 +353,7 @@ int COasisController::getConfig()
 int COasisController::haltFocuser()
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
@@ -358,38 +364,7 @@ int COasisController::haltFocuser()
         cHIDBuffer[1] = CODE_CMD_STOP_MOVE; // command
         cHIDBuffer[2] = 0; // command length
 
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-        hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [haltFocuser] sending : " << std::endl << m_hexOut << std::endl;
-        m_sLogFile.flush();
-#endif
-        nNbTimeOut = 0;
-        while(nNbTimeOut < 3) {
-            if(m_DevAccessMutex.try_lock()) {
-                nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-                m_DevAccessMutex.unlock();
-                if(nByteWriten<0) {
-                    nNbTimeOut++;
-                    std::this_thread::yield();
-                }
-                else {
-                    break; // all good, no need to retry
-                }
-            }
-            else {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
-        }
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [haltFocuser] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
+        nErr = sendCommand(cHIDBuffer);
     }
     m_nGotoTries = MAX_GOTO_RETRY+1; // prevent goto retries
 
@@ -400,9 +375,7 @@ int COasisController::haltFocuser()
 int COasisController::gotoPosition(long nPos)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     DeclareFrame(FrameMoveTo, frameMove, CODE_CMD_MOVE_TO);
 
@@ -420,7 +393,6 @@ int COasisController::gotoPosition(long nPos)
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameMove, sizeof(FrameMoveTo));
 
-    nNbTimeOut = 0;
     m_nTargetPos = nPos;
 
     #ifdef PLUGIN_DEBUG
@@ -429,46 +401,7 @@ int COasisController::gotoPosition(long nPos)
     #endif
 
 
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-        hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [gotoPosition] sending : " << std::endl << m_hexOut << std::endl;
-        m_sLogFile.flush();
-#endif
-
-        nNbTimeOut = 0;
-        while(nNbTimeOut < 3) {
-            if(m_DevAccessMutex.try_lock()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // make sure nothing else is going on.
-                nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-                m_DevAccessMutex.unlock();
-                if(nByteWriten<0) {
-                    nNbTimeOut++;
-                    std::this_thread::yield();
-                }
-                else {
-                    break; // all good, no need to retry
-                }
-            }
-            else {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
-
-    #ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [gotoPosition] nByteWriten : " << nByteWriten << std::endl;
-        m_sLogFile.flush();
-    #endif
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [gotoPosition] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
+    nErr = sendCommand(cHIDBuffer);
     m_gotoTimer.Reset();
     return nErr;
 }
@@ -549,9 +482,7 @@ int COasisController::isGoToComplete(bool &bComplete)
 int COasisController::getVersions()
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
@@ -562,39 +493,7 @@ int COasisController::getVersions()
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frame, sizeof(FrameHead));
 
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getVersions] sending : " << std::endl << m_hexOut << std::endl;
-    m_sLogFile.flush();
-#endif
-    nNbTimeOut = 0;
-    while(nNbTimeOut < 3) {
-        if(m_DevAccessMutex.try_lock()) {
-            nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-            m_DevAccessMutex.unlock();
-            if(nByteWriten<0) {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            else {
-                break; // all good, no need to retry
-            }
-        }
-        else {
-            nNbTimeOut++;
-            std::this_thread::yield();
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getVersions] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
@@ -606,9 +505,7 @@ void COasisController::getVersions(std::string &sVersion)
 int COasisController::getModel()
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
@@ -619,39 +516,7 @@ int COasisController::getModel()
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frame, sizeof(FrameHead));
 
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getModel] sending : " << std::endl << m_hexOut << std::endl;
-    m_sLogFile.flush();
-#endif
-    nNbTimeOut = 0;
-    while(nNbTimeOut < 3) {
-        if(m_DevAccessMutex.try_lock()) {
-            nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-            m_DevAccessMutex.unlock();
-            if(nByteWriten<0) {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            else {
-                break; // all good, no need to retry
-            }
-        }
-        else {
-            nNbTimeOut++;
-            std::this_thread::yield();
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getModel] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 
 }
@@ -705,15 +570,52 @@ int COasisController::getSerial()
 #endif
 
     return nErr;
+}
+
+
+int COasisController::getBluetoothName()
+{
+    int nErr = PLUGIN_OK;
+    byte cHIDBuffer[REPORT_SIZE];
+
+    if(!m_bIsConnected || !m_DevHandle)
+        return ERR_COMMNOLINK;
+
+    DeclareFrameHead(frame, CODE_GET_BLUETOOTH_NAME);
+
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frame, sizeof(FrameHead));
+
+    nErr = sendCommand(cHIDBuffer);
+    return nErr;
 
 }
+
+int COasisController::getFriendlyName()
+{
+    int nErr = PLUGIN_OK;
+    byte cHIDBuffer[REPORT_SIZE];
+
+    if(!m_bIsConnected || !m_DevHandle)
+        return ERR_COMMNOLINK;
+
+    DeclareFrameHead(frame, CODE_GET_FRIENDLY_NAME);
+
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frame, sizeof(FrameHead));
+    
+    nErr = sendCommand(cHIDBuffer);
+    return nErr;
+
+}
+
 
 int COasisController::setMaxStep(unsigned int nMaxStep)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
@@ -725,53 +627,13 @@ int COasisController::setMaxStep(unsigned int nMaxStep)
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
     frameConfig.mask = MASK_MAX_STEP;
-    frameConfig.maxStep = nMaxStep;
+    frameConfig.maxStep = htonl(nMaxStep);
 
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
-    nNbTimeOut = 0;
-
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-        hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setMaxStep] sending : " << std::endl << m_hexOut << std::endl;
-        m_sLogFile.flush();
-#endif
-
-        nNbTimeOut = 0;
-        while(nNbTimeOut < 3) {
-            if(m_DevAccessMutex.try_lock()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // make sure nothing else is going on.
-                nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-                m_DevAccessMutex.unlock();
-                if(nByteWriten<0) {
-                    nNbTimeOut++;
-                    std::this_thread::yield();
-                }
-                else {
-                    break; // all good, no need to retry
-                }
-            }
-            else {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
-
-    #ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setMaxStep] nByteWriten : " << nByteWriten << std::endl;
-        m_sLogFile.flush();
-    #endif
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setMaxStep] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
+    nErr = sendCommand(cHIDBuffer);
 
     return nErr;
 }
@@ -784,9 +646,7 @@ void COasisController::getBacklash(unsigned int &nBacklash)
 int COasisController::setBacklash(unsigned int nBacklash)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
-    int nNbTimeOut = 0;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
@@ -798,197 +658,257 @@ int COasisController::setBacklash(unsigned int nBacklash)
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
     frameConfig.mask = MASK_BACKLASH;
-    frameConfig.backlash = nBacklash;
+    frameConfig.backlash = htonl(nBacklash);
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
-    nNbTimeOut = 0;
-
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-        hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBacklash] sending : " << std::endl << m_hexOut << std::endl;
-        m_sLogFile.flush();
-#endif
-
-        nNbTimeOut = 0;
-        while(nNbTimeOut < 3) {
-            if(m_DevAccessMutex.try_lock()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // make sure nothing else is going on.
-                nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-                m_DevAccessMutex.unlock();
-                if(nByteWriten<0) {
-                    nNbTimeOut++;
-                    std::this_thread::yield();
-                }
-                else {
-                    break; // all good, no need to retry
-                }
-            }
-            else {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
-
-    #ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBacklash] nByteWriten : " << nByteWriten << std::endl;
-        m_sLogFile.flush();
-    #endif
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBacklash] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
-
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
-void COasisController::getBacklashDirection(unsigned int &nBacklashDir)
+void COasisController::getBacklashDirection(byte &nBacklashDir)
 {
     nBacklashDir = m_Oasis_Settings.backlashDirection;
 }
 
-int COasisController::setBacklashDirection(unsigned int nBacklashDir)
+int COasisController::setBacklashDirection(byte nBacklashDir)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBacklashDirection] setting backlashDirection to :  " << std::dec << nBacklashDir << " (0x" << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << nBacklashDir <<")" << std::dec << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
+    frameConfig.mask = MASK_BACKLASH_DIRECTION;
+    frameConfig.backlashDirection = nBacklashDir;
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
 void COasisController::getReverse(bool &bReversed)
 {
-
+    bReversed = m_Oasis_Settings.bIsReversed;
 }
 
-int COasisController::setReverse(bool bReversed)
+int COasisController::setReverse(bool setReverse)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setReverse] setting setReverse to :  " << (setReverse?"Reverse":"Normal") << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
+    frameConfig.mask = MASK_REVERSE_DIRECTION;
+    frameConfig.reverseDirection = setReverse?0:1;
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
-void COasisController::getMaxSpeed(unsigned int &nSpeed)
+void COasisController::getSpeed(unsigned int &nSpeed)
 {
-
+    nSpeed = m_Oasis_Settings.speed;
 }
 
-int COasisController::setMaxSpeed(unsigned int nSpeed)
+int COasisController::setSpeed(unsigned int nSpeed)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setSpeed] setting speed to :  " << std::dec << nSpeed << " (0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << nSpeed <<")" << std::dec << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
+    frameConfig.mask = MASK_SPEED;
+    frameConfig.speed = nSpeed;
+
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
+
 }
 
 void COasisController::getBeepOnMove(bool &bEnabled)
 {
-
+    bEnabled = m_Oasis_Settings.beepOnMove;
 }
 
 int COasisController::setBeepOnMove(bool bEnabled)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBeepOnMove] setting beep on move to :  " << (bEnabled?"True":"False") << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
+    frameConfig.mask = MASK_BEEP_ON_MOVE;
+    frameConfig.beepOnMove = bEnabled?1:0;
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
 void COasisController::getBeepOnStartup(bool &bEnabled)
 {
-
+    bEnabled = m_Oasis_Settings.beepOnStartup;
 }
 
 int COasisController::setBeepOnStartup(bool bEnabled)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBeepOnStartup] setting beep on statrup to :  " << (bEnabled?"True":"False") << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
+    frameConfig.mask = MASK_BEEP_ON_STARTUP;
+    frameConfig.beepOnMove = bEnabled?1:0;
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
 void COasisController::getBluetoothEnabled(bool &bEnabled)
 {
-
+        bEnabled = m_Oasis_Settings.bluetoothOn;
 }
 
 int COasisController::setBluetoothEnabled(bool bEnabled)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
+
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBluetoothEnabled] setting bluetooth to :  " << (bEnabled?"Enable":"didsable") << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
+    frameConfig.mask = MASK_BLUETOOTH;
+    frameConfig.bluetoothOn = bEnabled?1:0;
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+    nErr = sendCommand(cHIDBuffer);
 
     return nErr;
 }
 
 void COasisController::getBluetoothName(std::string &sName)
 {
-
+    sName.assign(m_Oasis_Settings.sBluetoothName);
 }
 
 int COasisController::setBluetoothName(std::string sName)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
+    int nameMaxLen;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBluetoothName] setting bluetooth name to :  " << sName << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameBluetoothName, command, CODE_SET_BLUETOOTH_NAME);
+    nameMaxLen = sizeof(command.data);
+    memcpy(command.data, sName.c_str(),nameMaxLen<sName.size()?nameMaxLen:sName.size());
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&command, sizeof(FrameBluetoothName));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
 void COasisController::getFriendlyName(std::string &sName)
 {
-
+    sName.assign(m_Oasis_Settings.sFriendlyName);
 }
 
 int COasisController::setFriendlyName(std::string sName)
 {
     int nErr = PLUGIN_OK;
-    int nByteWriten = 0;
     byte cHIDBuffer[REPORT_SIZE];
+    int nameMaxLen;
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setFriendlyName] setting friendly name to :  " << sName << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    DeclareFrame(FrameBluetoothName, command, CODE_SET_FRIENDLY_NAME);
+    nameMaxLen = sizeof(command.data);
+    memcpy(command.data, sName.c_str(),nameMaxLen<sName.size()?nameMaxLen:sName.size());
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&command, sizeof(FrameBluetoothName));
+
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
+
 }
 
 
 
 void COasisController::getSerial(std::string &sSerial)
 {
-    // Serial.assign(m_Oasis_)
+    sSerial.assign(m_Oasis_Settings.sSerial);
 }
 
 void COasisController::getFirmwareVersion(std::string &sFirmware)
@@ -1338,45 +1258,7 @@ int COasisController::sendSettings()
 
     // TO REWRITE
 
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    hexdump(cHIDBuffer,  REPORT_SIZE, m_hexOut);
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [sendSettings] sending : " << std::endl << m_hexOut << std::endl;
-    m_sLogFile.flush();
-#endif
-
-    nNbTimeOut = 0;
-    while(nNbTimeOut < 3) {
-        if(m_DevAccessMutex.try_lock()) {
-            nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
-            m_DevAccessMutex.unlock();
-            if(nByteWriten<0) {
-                nNbTimeOut++;
-                std::this_thread::yield();
-            }
-            else {
-                break; // all good, no need to retry
-            }
-        }
-        else {
-            nNbTimeOut++;
-            std::this_thread::yield();
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
-    }
-
-    if(nNbTimeOut>=3) {
-#ifdef PLUGIN_DEBUG
-        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [sendSettings] ERROR Timeout sending command : " << std::endl;
-        m_sLogFile.flush();
-#endif
-        nErr = ERR_CMDFAILED;
-    }
-
-#ifdef PLUGIN_DEBUG
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [sendSettings] nByteWriten : " << nByteWriten << std::endl;
-    m_sLogFile.flush();
-#endif
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
+    nErr = sendCommand(cHIDBuffer);
     return nErr;
 }
 
@@ -1391,38 +1273,6 @@ int COasisController::GetNTCTemperature(int ad)
     T += (T >= 0) ? 0.005f : -0.005f;
 
     return (int)(T * 100);
-}
-
-int COasisController::Get32(const byte *buffer, int position)
-{
-
-    int num = 0;
-    for (int i = 0; i < 4; ++i) {
-        num = num << 8 | buffer[position + i];
-    }
-    return num;
-
-}
-
-int COasisController::Get16(const byte *buffer, int position)
-{
-
-    return buffer[position] << 8 | buffer[position + 1];
-
-}
-
-void COasisController::put32(byte *buffer, int position, int value)
-{
-    buffer[position    ] = byte((value>>24)  & 0xff);
-    buffer[position + 1] = byte((value>>16)  & 0xff);
-    buffer[position + 2] = byte((value>>8)  & 0xff);
-    buffer[position + 3] = byte(value & 0xff);
-}
-
-void COasisController::put16(byte *buffer, int position, int value)
-{
-    buffer[position    ] = byte((value>>8)  & 0xff);
-    buffer[position + 1] = byte(value & 0xff);
 }
 
 
