@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>326</width>
-    <height>312</height>
+    <width>369</width>
+    <height>556</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,8 +24,8 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>326</width>
-    <height>312</height>
+    <width>800</width>
+    <height>800</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -61,8 +61,8 @@
      <widget class="QPushButton" name="pushButtonCancel">
       <property name="geometry">
        <rect>
-        <x>120</x>
-        <y>240</y>
+        <x>152</x>
+        <y>490</y>
         <width>81</width>
         <height>24</height>
        </rect>
@@ -77,8 +77,8 @@
       </property>
       <property name="geometry">
        <rect>
-        <x>208</x>
-        <y>240</y>
+        <x>240</x>
+        <y>490</y>
         <width>81</width>
         <height>24</height>
        </rect>
@@ -108,79 +108,22 @@
        <rect>
         <x>200</x>
         <y>20</y>
-        <width>91</width>
+        <width>110</width>
         <height>24</height>
        </rect>
-      </property>
-      <item>
-       <property name="text">
-        <string>Air</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Tube</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Mirror</string>
-       </property>
-      </item>
-     </widget>
-     <widget class="QRadioButton" name="radioButton">
-      <property name="geometry">
-       <rect>
-        <x>90</x>
-        <y>80</y>
-        <width>48</width>
-        <height>24</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>On</string>
-      </property>
-     </widget>
-     <widget class="QRadioButton" name="radioButton_2">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>80</y>
-        <width>48</width>
-        <height>24</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Off</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_2">
-      <property name="geometry">
-       <rect>
-        <x>30</x>
-        <y>80</y>
-        <width>48</width>
-        <height>24</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Fans :</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
       </property>
      </widget>
      <widget class="QLabel" name="label_3">
       <property name="geometry">
        <rect>
-        <x>16</x>
-        <y>120</y>
+        <x>50</x>
+        <y>50</y>
         <width>144</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>Air Temperature :</string>
+       <string>Internal sensor :</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -189,30 +132,14 @@
      <widget class="QLabel" name="label_4">
       <property name="geometry">
        <rect>
-        <x>16</x>
-        <y>140</y>
+        <x>50</x>
+        <y>70</y>
         <width>144</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>Tuber Temperature :</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_5">
-      <property name="geometry">
-       <rect>
-        <x>16</x>
-        <y>160</y>
-        <width>144</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Mirrorr Temperature :</string>
+       <string>External sensor :</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -221,8 +148,8 @@
      <widget class="QLabel" name="airTemp">
       <property name="geometry">
        <rect>
-        <x>184</x>
-        <y>120</y>
+        <x>210</x>
+        <y>50</y>
         <width>60</width>
         <height>20</height>
        </rect>
@@ -234,53 +161,302 @@
      <widget class="QLabel" name="tubeTemp">
       <property name="geometry">
        <rect>
-        <x>184</x>
-        <y>140</y>
-        <width>60</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>22.5 ºC</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="mirrorTemp">
-      <property name="geometry">
-       <rect>
-        <x>184</x>
-        <y>160</y>
-        <width>60</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>22.5 ºC</string>
-      </property>
-     </widget>
-     <widget class="QCheckBox" name="checkBox">
-      <property name="geometry">
-       <rect>
-        <x>32</x>
-        <y>200</y>
-        <width>200</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Restore position on connect</string>
-      </property>
-     </widget>
-     <widget class="QRadioButton" name="radioButton_3">
-      <property name="geometry">
-       <rect>
         <x>210</x>
-        <y>80</y>
-        <width>70</width>
+        <y>70</y>
+        <width>60</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>22.5 ºC</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="reverseDir">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>170</y>
+        <width>129</width>
         <height>24</height>
        </rect>
       </property>
       <property name="text">
-       <string>Auto</string>
+       <string>Reverse Direction</string>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="newPos">
+      <property name="geometry">
+       <rect>
+        <x>144</x>
+        <y>106</y>
+        <width>100</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="maximum">
+       <number>2147483647</number>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="posLimit">
+      <property name="geometry">
+       <rect>
+        <x>144</x>
+        <y>138</y>
+        <width>100</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="maximum">
+       <number>2147483647</number>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_2">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>106</y>
+        <width>112</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Sync to Position :</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_5">
+      <property name="geometry">
+       <rect>
+        <x>40</x>
+        <y>138</y>
+        <width>91</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Max Position :</string>
+      </property>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_3">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>210</y>
+        <width>290</width>
+        <height>100</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Backlash Compensation</string>
+      </property>
+      <widget class="QCheckBox" name="backlashEnable">
+       <property name="geometry">
+        <rect>
+         <x>200</x>
+         <y>32</y>
+         <width>56</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>On</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_7">
+       <property name="geometry">
+        <rect>
+         <x>16</x>
+         <y>32</y>
+         <width>72</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Steps :</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QSpinBox" name="backlashSteps">
+       <property name="geometry">
+        <rect>
+         <x>104</x>
+         <y>32</y>
+         <width>90</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="maximum">
+        <number>99999</number>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_6">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>70</y>
+         <width>70</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Direction : </string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="radioButton">
+       <property name="geometry">
+        <rect>
+         <x>120</x>
+         <y>70</y>
+         <width>50</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>In</string>
+       </property>
+      </widget>
+      <widget class="QRadioButton" name="radioButton_2">
+       <property name="geometry">
+        <rect>
+         <x>180</x>
+         <y>70</y>
+         <width>50</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Out</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QPushButton" name="pushButton_2">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>106</y>
+        <width>48</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Set</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_3">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>140</y>
+        <width>48</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Set</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="beepOnConnect">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>330</y>
+        <width>140</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Beep on connect</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="beepOnMove">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>360</y>
+        <width>140</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Beep on move</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_3">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>390</y>
+        <width>140</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Bluetooth enable</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="bluetoothName">
+      <property name="geometry">
+       <rect>
+        <x>160</x>
+        <y>420</y>
+        <width>160</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="maxLength">
+       <number>32</number>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_8">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>420</y>
+        <width>110</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Bluetooth name :</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_9">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>450</y>
+        <width>110</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Friendly  name :</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="FriendlyName">
+      <property name="geometry">
+       <rect>
+        <x>160</x>
+        <y>450</y>
+        <width>160</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="maxLength">
+       <number>32</number>
       </property>
      </widget>
     </widget>
