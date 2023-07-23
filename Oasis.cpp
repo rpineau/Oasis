@@ -633,7 +633,7 @@ int COasisController::setMaxStep(unsigned int nMaxStep)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_MAX_STEP;
+    frameConfig.mask = htonl(MASK_MAX_STEP);
     frameConfig.maxStep = htonl(nMaxStep);
 
     // clear buffer and set cHIDBuffer[0] to report ID 0
@@ -663,7 +663,7 @@ int COasisController::setBacklash(unsigned int nBacklash)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_BACKLASH;
+    frameConfig.mask = htonl(MASK_BACKLASH);
     frameConfig.backlash = htonl(nBacklash);
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
@@ -693,7 +693,7 @@ int COasisController::setBacklashDirection(byte nBacklashDir)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_BACKLASH_DIRECTION;
+    frameConfig.mask = htonl(MASK_BACKLASH_DIRECTION);
     frameConfig.backlashDirection = nBacklashDir;
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
@@ -723,7 +723,7 @@ int COasisController::setReverse(bool setReverse)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_REVERSE_DIRECTION;
+    frameConfig.mask = htonl(MASK_REVERSE_DIRECTION);
     frameConfig.reverseDirection = setReverse?0:1;
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
@@ -753,7 +753,7 @@ int COasisController::setSpeed(unsigned int nSpeed)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_SPEED;
+    frameConfig.mask = htonl(MASK_SPEED);
     frameConfig.speed = nSpeed;
 
     // clear buffer and set cHIDBuffer[0] to report ID 0
@@ -785,7 +785,7 @@ int COasisController::setBeepOnMove(bool bEnabled)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_BEEP_ON_MOVE;
+    frameConfig.mask = ntohl(MASK_BEEP_ON_MOVE);
     frameConfig.beepOnMove = bEnabled?1:0;
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
@@ -815,8 +815,8 @@ int COasisController::setBeepOnStartup(bool bEnabled)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_BEEP_ON_STARTUP;
-    frameConfig.beepOnMove = bEnabled?1:0;
+    frameConfig.mask = htonl(MASK_BEEP_ON_STARTUP);
+    frameConfig.beepOnStartup = bEnabled?1:0;
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
@@ -845,7 +845,7 @@ int COasisController::setBluetoothEnabled(bool bEnabled)
 #endif
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
-    frameConfig.mask = MASK_BLUETOOTH;
+    frameConfig.mask = htonl(MASK_BLUETOOTH);
     frameConfig.bluetoothOn = bEnabled?1:0;
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
@@ -1310,6 +1310,7 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlashDirection   : " << (m_Oasis_Settings.backlashDirection?0:1) << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.speed               : " << std::to_string(m_Oasis_Settings.speed) << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnStartup       : " << (m_Oasis_Settings.beepOnStartup?0:1) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnMove          : " << (m_Oasis_Settings.beepOnMove?0:1) << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bluetoothOn         : " << (m_Oasis_Settings.bluetoothOn?0:1) << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sBluetoothName      : " <<  m_Oasis_Settings.sBluetoothName << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sFriendlyName       : " <<  m_Oasis_Settings.sFriendlyName << std::endl;
