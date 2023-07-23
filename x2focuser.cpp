@@ -189,9 +189,12 @@ int	X2Focuser::execModalSettingsDialog(void)
     int nFocIndex = 0;
     int i;
     if(m_bLinked) {
+        m_nCurrentDialog = SETTINGS;
+
         nErr = doOasisFocuserFeatureConfig();
         return nErr;
     }
+    m_nCurrentDialog = SELECT;
 
     X2GUIExchangeInterface* dx = NULL;//Comes after ui is loaded
     X2ModalUIUtil           uiutil(this, GetTheSkyXFacadeForDrivers());
@@ -227,7 +230,6 @@ int	X2Focuser::execModalSettingsDialog(void)
         dx->setCurrentIndex("comboBox",nFocIndex);
     }
 
-    m_nCurrentDialog = SELECT;
 
     //Display the user interface
     if ((nErr = ui->exec(bPressedOK)))
@@ -257,17 +259,34 @@ int	X2Focuser::execModalSettingsDialog(void)
 void X2Focuser::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
 {
     std::stringstream sTmpBuf;
-    bool bTmp;
+    int nTmp;
 
-    if (!strcmp(pszEvent, "on_timer")) {
-        if(m_bLinked) {
-            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
-            uiex->setText("focuserTemp", sTmpBuf.str().c_str());
-
-            std::stringstream().swap(sTmpBuf);
-            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << "ºC";
-            uiex->setText("probeTemp", sTmpBuf.str().c_str());
-        }
+    switch(m_nCurrentDialog) {
+        case  SELECT:
+            break;
+        case SETTINGS:
+            if (!strcmp(pszEvent, "on_timer")) {
+                if(m_bLinked) {
+                    sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
+                    uiex->setText("focuserTemp", sTmpBuf.str().c_str());
+                    if(m_OasisController.isExternalSensorPresent()) {
+                        std::stringstream().swap(sTmpBuf);
+                        sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << "ºC";
+                        uiex->setText("probeTemp", sTmpBuf.str().c_str());
+                    }
+                }
+            }
+            else if (!strcmp(pszEvent, "on_pushButton_2_clicked")) {
+                uiex->propertyInt("newPos", "value", nTmp);
+                m_OasisController.setPosition((unsigned int)nTmp);
+            }
+            else if (!strcmp(pszEvent, "on_pushButton_3_clicked")) {
+                uiex->propertyInt("posLimit", "value", nTmp);
+                m_OasisController.setMaxStep((unsigned int)nTmp);
+            }
+            break;
+        default:
+            break;
     }
 }
 
@@ -280,7 +299,11 @@ int X2Focuser::doOasisFocuserFeatureConfig()
     X2GUIExchangeInterface*            dx = NULL;//Comes after ui is loaded
     bool bPressedOK = false;
     std::stringstream sTmpBuf;
+    std::string sTmp;
     int nTmp;
+    std::string sFriendlyName;
+    std::string sBluetoothName;
+    char szTmpBuf[FRAME_NAME_LEN+1];
 
     mUiEnabled = false;
 
@@ -294,25 +317,57 @@ int X2Focuser::doOasisFocuserFeatureConfig()
         return ERR_POINTER;
 
     X2MutexLocker ml(GetMutex());
-/*
+
     // set controls values
     if(m_bLinked) {
-        sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
-        dx->setText("focuserTemp", sTmpBuf.str().c_str());
+        if(m_OasisController.isExternalSensorPresent()) {
+            dx->comboBoxAppendString("comboBox", "Internal");
+            dx->comboBoxAppendString("comboBox", "External");
+            nTmp = m_OasisController.getTemperatureSource();
+            dx->setCurrentIndex("comboBox", nTmp==INTERNAL?0:1);
+            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
+            dx->setText("internalTemp", sTmpBuf.str().c_str());
 
-        std::stringstream().swap(sTmpBuf);
-        sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << "ºC";
-        dx->setText("probeTemp", sTmpBuf.str().c_str());
+            std::stringstream().swap(sTmpBuf);
+            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << "ºC";
+            dx->setText("probeTemp", sTmpBuf.str().c_str());
+        }
+        else {
+            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
+            dx->setText("internalTemp", sTmpBuf.str().c_str());
+            dx->setText("probeTemp", "Not present");
+            dx->setEnabled("comboBox", false);
+        }
+        dx->setPropertyInt("newPos", "value", m_OasisController.getPosition());
+        dx->setPropertyInt("posLimit", "value", m_OasisController.getPosLimit());
+        dx->setChecked("reverseDir", m_OasisController.getReverse());
+        dx->setPropertyInt("backlashSteps", "value", m_OasisController.getBacklash());
+        dx->setChecked("radioButton", m_OasisController.getBacklashDirection() == 0?true:false);
+        dx->setChecked("radioButton_2", m_OasisController.getBacklashDirection() == 1?true:false);
+        dx->setChecked("beepOnConnect", m_OasisController.getBeepOnStartup());
+        dx->setChecked("beepOnMove", m_OasisController.getBeepOnMove());
+        dx->setChecked("checkBox_3", m_OasisController.getBluetoothEnabled());
+        m_OasisController.getBluetoothName(sBluetoothName);
+        dx->setText("bluetoothName", sBluetoothName.c_str());
+        m_OasisController.getFriendlyName(sFriendlyName);
+        dx->setText("friendlyName", sFriendlyName.c_str());
     }
     else {
+        dx->setEnabled("comboBox", false);
         dx->setText("focuserTemp", "");
         dx->setText("probeTemp", "");
+        dx->setEnabled("newPos", false);
+        dx->setEnabled("posLimit", false);
+        dx->setEnabled("reverseDir", false);
+        dx->setEnabled("backlashSteps", false);
+        dx->setEnabled("radioButton", false);
+        dx->setEnabled("radioButton_2", false);
+        dx->setEnabled("beepOnConnect", false);
+        dx->setEnabled("beepOnMove", false);
+        dx->setEnabled("checkBox_3", false);
+        dx->setEnabled("bluetoothName", false);
+        dx->setEnabled("friendlyName", false);
     }
-
-    // This doesn't require to be connected as this is the user selection of what temperature source he wants reported to TSX
-    dx->setEnabled("comboBox",true);
-    nTmp = m_OasisController.getTemperatureSource();
-    dx->setCurrentIndex("comboBox", nTmp);
 
     //Display the user interface
     mUiEnabled = true;
@@ -323,30 +378,36 @@ int X2Focuser::doOasisFocuserFeatureConfig()
     //Retreive values from the user interface
     if (bPressedOK) {
         nTmp = dx->currentIndex("comboBox");
-        m_OasisController.setTemperatureSource(nTmp);
-        m_pIniUtil->writeInt(PARENT_KEY, TEMP_SOURCE, nTmp);
+        m_OasisController.setTemperatureSource(nTmp==0?INTERNAL:EXTERNAL);
+        m_pIniUtil->writeInt(m_sFocuserSerial.c_str(), TEMP_SOURCE, nTmp==0?INTERNAL:EXTERNAL);
+        m_OasisController.setReverse(dx->isChecked("reverseDir")==1);
+        dx->propertyInt("backlashSteps", "value", nTmp);
+        m_OasisController.setBacklash(nTmp);
+        m_OasisController.setBacklashDirection( dx->isChecked("radioButton")==1?0:1 );
 
-        if(dx->isChecked("radioButton")) {
-            m_pIniUtil->writeInt(PARENT_KEY, AUTOFAN_STATE, 0);
-            m_pIniUtil->writeInt(PARENT_KEY, FAN_STATE, 1);
-        }
-        else if(dx->isChecked("radioButton_2")){
-            m_pIniUtil->writeInt(PARENT_KEY, AUTOFAN_STATE, 0);
-            m_pIniUtil->writeInt(PARENT_KEY, FAN_STATE, 0);
-        }
-        else if(dx->isChecked("radioButton_3")) {
-            m_pIniUtil->writeInt(PARENT_KEY, AUTOFAN_STATE, 1);
-            m_pIniUtil->writeInt(PARENT_KEY, FAN_STATE, 0);
-        }
+        m_OasisController.setBeepOnStartup( dx->isChecked("beepOnConnect")==1?true:false );
+        m_OasisController.setBeepOnMove( dx->isChecked("beepOnMove")==1?true:false );
+        m_OasisController.setBluetoothEnabled( dx->isChecked("bluetoothEnable")==1?true:false );
 
-        if(dx->isChecked("checkBox"))
-            m_pIniUtil->writeInt(PARENT_KEY, RESTORE_POSITION, 1);
-        else
-            m_pIniUtil->writeInt(PARENT_KEY, RESTORE_POSITION, 0);
+        memset(szTmpBuf,0,FRAME_NAME_LEN+1);
+        dx->propertyString("bluetoothName", "text", szTmpBuf, FRAME_NAME_LEN);
+        sTmp.assign(szTmpBuf);
+        m_OasisController.logToFile(sTmp);
+        m_OasisController.logToFile(sBluetoothName);
+        m_OasisController.setBluetoothName(std::string(szTmpBuf));
 
+        memset(szTmpBuf,0,FRAME_NAME_LEN+1);
+        dx->propertyString("friendlyName", "text", szTmpBuf, FRAME_NAME_LEN);
+        sTmp.assign(szTmpBuf);
+        m_OasisController.logToFile(sTmp);
+        m_OasisController.logToFile(sFriendlyName);
+        m_OasisController.setFriendlyName(std::string(szTmpBuf));
+
+        m_OasisController.getConfig();
+        m_OasisController.getBluetoothName();
+        m_OasisController.getFriendlyName();
         nErr = SB_OK;
     }
- */
     return nErr;
 }
 

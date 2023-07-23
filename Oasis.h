@@ -88,6 +88,7 @@ typedef struct Oasis_setting_atom {
     std::atomic<word>   nBacklash;
     std::atomic<float>  fInternal;
     std::atomic<float>  fAmbient;
+    std::atomic<bool>   bExternalSensorPresent;
 
     std::atomic<uint32_t> backlash;
     std::atomic<uint8_t> backlashDirection;
@@ -152,31 +153,33 @@ public:
     void        getFirmwareVersion(std::string &sFirmware);
     double      getTemperature();
     double      getTemperature(int nSource);
-    long        getPosition(void);
-    long        getPosLimit(void);
+    uint32_t    getPosition(void);
+    int         setPosition(unsigned int nPos);
+    uint32_t    getPosLimit(void);
+    int         setMaxStep(unsigned int nMaxStep);
 
     void        setTemperatureSource(int nSource);
     int         getTemperatureSource();
+    bool        isExternalSensorPresent();
 
     void        getVersions(std::string &sVersion);
     void        getModel(std::string &sModel);
     void        getSerial(std::string &sSerial);
 
-    int         setMaxStep(unsigned int nMaxStep);
 
-    void        getBacklash(unsigned int &nBacklash);
+    uint32_t    getBacklash();
     int         setBacklash(unsigned int nBacklash);
-    void        getBacklashDirection(uint8_t &nBacklashDir);
+    uint8_t     getBacklashDirection();
     int         setBacklashDirection(uint8_t nBacklashDir);
-    void        getReverse(bool &bReversed);
+    bool        getReverse();
     int         setReverse(bool bReversed);
-    void        getSpeed(unsigned int &nSpeed);
+    uint32_t    getSpeed();
     int         setSpeed(unsigned int nSpeed);
-    void        getBeepOnMove(bool &bEnabled);
+    bool        getBeepOnMove();
     int         setBeepOnMove(bool bEnabled);
-    void        getBeepOnStartup(bool &bEnabled);
+    bool        getBeepOnStartup();
     int         setBeepOnStartup(bool bEnabled);
-    void        getBluetoothEnabled(bool &bEnabled);
+    bool        getBluetoothEnabled();
     int         setBluetoothEnabled(bool bEnabled);
     void        getBluetoothName(std::string &sName);
     int         setBluetoothName(std::string sName);
@@ -186,6 +189,12 @@ public:
     void        parseResponse(byte *Buffer, int nLength);
     int         sendSettings();
 
+    int         getConfig();
+    int         getBluetoothName();
+    int         getFriendlyName();
+    int         getVersions();
+    int         getModel();
+    int         getSerial();
 
     std::mutex          m_GlobalMutex;
     std::mutex          m_DevAccessMutex;
@@ -206,12 +215,6 @@ protected:
     void            stopThreads();
     int             sendCommand(byte *cHIDBuffer);
     
-    int         getConfig();
-    int         getVersions();
-    int         getModel();
-    int         getSerial();
-    int         getBluetoothName();
-    int         getFriendlyName();
     int         GetNTCTemperature(int ad);
 
     std::string         m_sSerialNumber;
@@ -240,6 +243,11 @@ protected:
     std::thread         m_thSender;
 
     CStopWatch          m_gotoTimer;
+
+    std::string&    trim(std::string &str, const std::string &filter );
+    std::string&    ltrim(std::string &str, const std::string &filter);
+    std::string&    rtrim(std::string &str, const std::string &filter);
+
     
 #ifdef PLUGIN_DEBUG
     void    hexdump(const byte *inputData, int inputSize,  std::string &outHex);

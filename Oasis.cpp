@@ -38,9 +38,12 @@ void threaded_poller(std::future<void> futureObj, COasisController *OasisControl
             if(nbRead>0){
                 OasisControllerObj->parseResponse(cHIDBuffer, nbRead);
             }
-            if(nbRead==-1) { // error
+            else if(nbRead==-1) { // error
                 std::this_thread::yield();
                 continue;
+            }
+            else {
+                std::this_thread::yield();
             }
         }
         else {
@@ -66,6 +69,8 @@ COasisController::COasisController()
 
     m_sSerialNumber.clear();
     m_DevHandle = nullptr;
+
+    memset((void*)&m_Oasis_Settings,0,sizeof(struct Oasis_setting_atom));
 
 #ifdef PLUGIN_DEBUG
 #if defined(SB_WIN_BUILD)
@@ -169,6 +174,8 @@ int COasisController::Connect()
     getVersions();
     getSerial();
     getModel();
+    getBluetoothName();
+    getFriendlyName();
     return nErr;
 }
 
@@ -634,13 +641,12 @@ int COasisController::setMaxStep(unsigned int nMaxStep)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
-
     return nErr;
 }
 
-void COasisController::getBacklash(unsigned int &nBacklash)
+uint32_t COasisController::getBacklash()
 {
-    nBacklash = m_Oasis_Settings.backlash;
+    return m_Oasis_Settings.backlash;
 }
 
 int COasisController::setBacklash(unsigned int nBacklash)
@@ -664,12 +670,13 @@ int COasisController::setBacklash(unsigned int nBacklash)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 }
 
-void COasisController::getBacklashDirection(byte &nBacklashDir)
+uint8_t COasisController::getBacklashDirection()
 {
-    nBacklashDir = m_Oasis_Settings.backlashDirection;
+    return m_Oasis_Settings.backlashDirection;
 }
 
 int COasisController::setBacklashDirection(byte nBacklashDir)
@@ -693,12 +700,13 @@ int COasisController::setBacklashDirection(byte nBacklashDir)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 }
 
-void COasisController::getReverse(bool &bReversed)
+bool  COasisController::getReverse()
 {
-    bReversed = m_Oasis_Settings.bIsReversed;
+    return m_Oasis_Settings.bIsReversed;
 }
 
 int COasisController::setReverse(bool setReverse)
@@ -722,12 +730,13 @@ int COasisController::setReverse(bool setReverse)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 }
 
-void COasisController::getSpeed(unsigned int &nSpeed)
+uint32_t COasisController::getSpeed()
 {
-    nSpeed = m_Oasis_Settings.speed;
+    return m_Oasis_Settings.speed;
 }
 
 int COasisController::setSpeed(unsigned int nSpeed)
@@ -752,13 +761,14 @@ int COasisController::setSpeed(unsigned int nSpeed)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 
 }
 
-void COasisController::getBeepOnMove(bool &bEnabled)
+bool COasisController::getBeepOnMove()
 {
-    bEnabled = m_Oasis_Settings.beepOnMove;
+    return m_Oasis_Settings.beepOnMove;
 }
 
 int COasisController::setBeepOnMove(bool bEnabled)
@@ -782,12 +792,13 @@ int COasisController::setBeepOnMove(bool bEnabled)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 }
 
-void COasisController::getBeepOnStartup(bool &bEnabled)
+bool COasisController::getBeepOnStartup()
 {
-    bEnabled = m_Oasis_Settings.beepOnStartup;
+    return m_Oasis_Settings.beepOnStartup;
 }
 
 int COasisController::setBeepOnStartup(bool bEnabled)
@@ -811,12 +822,13 @@ int COasisController::setBeepOnStartup(bool bEnabled)
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 }
 
-void COasisController::getBluetoothEnabled(bool &bEnabled)
+bool COasisController::getBluetoothEnabled()
 {
-        bEnabled = m_Oasis_Settings.bluetoothOn;
+    return m_Oasis_Settings.bluetoothOn;
 }
 
 int COasisController::setBluetoothEnabled(bool bEnabled)
@@ -828,7 +840,7 @@ int COasisController::setBluetoothEnabled(bool bEnabled)
         return ERR_COMMNOLINK;
 
 #ifdef PLUGIN_DEBUG
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBluetoothEnabled] setting bluetooth to :  " << (bEnabled?"Enable":"didsable") << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBluetoothEnabled] setting bluetooth to :  " << (bEnabled?"Enable":"Disable") << std::endl;
     m_sLogFile.flush();
 #endif
 
@@ -838,6 +850,7 @@ int COasisController::setBluetoothEnabled(bool bEnabled)
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
+
     nErr = sendCommand(cHIDBuffer);
 
     return nErr;
@@ -852,6 +865,7 @@ int COasisController::setBluetoothName(std::string sName)
 {
     int nErr = PLUGIN_OK;
     byte cHIDBuffer[REPORT_SIZE];
+    std::string sNewName;
     int nameMaxLen;
 
     if(!m_bIsConnected || !m_DevHandle)
@@ -862,14 +876,17 @@ int COasisController::setBluetoothName(std::string sName)
     m_sLogFile.flush();
 #endif
 
+    sNewName = trim(sName,"\n\r ");
+
     DeclareFrame(FrameBluetoothName, command, CODE_SET_BLUETOOTH_NAME);
     nameMaxLen = sizeof(command.data);
-    memcpy(command.data, sName.c_str(),nameMaxLen<sName.size()?nameMaxLen:sName.size());
+    memcpy(command.data, sNewName.c_str(),nameMaxLen<sNewName.size()?nameMaxLen:sNewName.size());
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&command, sizeof(FrameBluetoothName));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 }
 
@@ -882,6 +899,7 @@ int COasisController::setFriendlyName(std::string sName)
 {
     int nErr = PLUGIN_OK;
     byte cHIDBuffer[REPORT_SIZE];
+    std::string sNewName;
     int nameMaxLen;
 
     if(!m_bIsConnected || !m_DevHandle)
@@ -892,14 +910,17 @@ int COasisController::setFriendlyName(std::string sName)
     m_sLogFile.flush();
 #endif
 
+    sNewName = trim(sName,"\n\r ");
+
     DeclareFrame(FrameBluetoothName, command, CODE_SET_FRIENDLY_NAME);
     nameMaxLen = sizeof(command.data);
-    memcpy(command.data, sName.c_str(),nameMaxLen<sName.size()?nameMaxLen:sName.size());
+    memcpy(command.data, sNewName.c_str(),nameMaxLen<sNewName.size()?nameMaxLen:sNewName.size());
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&command, sizeof(FrameBluetoothName));
 
     nErr = sendCommand(cHIDBuffer);
+
     return nErr;
 
 }
@@ -959,8 +980,13 @@ double COasisController::getTemperature(int nSource)
     }
 }
 
+bool COasisController::isExternalSensorPresent()
+{
+    return  m_Oasis_Settings.bExternalSensorPresent;
 
-long COasisController::getPosition()
+}
+
+uint32_t COasisController::getPosition()
 {
 
     if(m_Oasis_Settings.nCurPos < 0)
@@ -968,8 +994,36 @@ long COasisController::getPosition()
     return m_Oasis_Settings.nCurPos;
 }
 
+int COasisController::setPosition(unsigned int nPos)
+{
+    int nErr = PLUGIN_OK;
+    byte cHIDBuffer[REPORT_SIZE];
 
-long COasisController::getPosLimit()
+    DeclareFrame(FrameSyncPosition, frameSync, CODE_CMD_SYNC_POSITION);
+
+    if(!m_bIsConnected || !m_DevHandle)
+        return ERR_COMMNOLINK;
+
+    if(m_Oasis_Settings.bIsMoving)
+        return ERR_CMD_IN_PROGRESS_FOC;
+
+    frameSync.position = htonl((unsigned int)nPos);
+    // clear buffer and set cHIDBuffer[0] to report ID 0
+    memset(cHIDBuffer, 0, REPORT_SIZE);
+    memcpy(cHIDBuffer+1, (byte*)&frameSync, sizeof(FrameMoveTo));
+
+
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setPosition] set to :  " << std::dec << nPos << " (0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << nPos <<")" << std::dec << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    nErr = sendCommand(cHIDBuffer);
+
+    return nErr;
+}
+
+uint32_t COasisController::getPosLimit()
 {
     return m_Oasis_Settings.nMaxPos;
 }
@@ -996,12 +1050,16 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
     const std::lock_guard<std::mutex> lock(m_GlobalMutex);
     int nTmp;
     char cTmp[64];
+    std::string sTmp;
+
     byte nCode;
     FrameConfig *fConfig;
     FrameStatusAck *fStatus;
     FrameVersionAck *fVersions;
     FrameSerialNumber *fSerial;
     FrameProductModelAck *fModel;
+    FrameFriendlyName *fFriendlyName;
+    FrameBluetoothName *fBluetoothName;
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
     hexdump(Buffer,  nLength, m_hexOut);
@@ -1012,7 +1070,8 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
     switch (nCode) {
         case  CODE_GET_PRODUCT_MODEL :
             fModel = (FrameProductModelAck*)Buffer;
-            m_Oasis_Settings.sModel.assign((char*)(fModel->data));
+            sTmp.assign((char*)(fModel->data));
+            m_Oasis_Settings.sModel = trim(sTmp,"\n\r ");
             break;
 
         case  CODE_GET_VERSION :
@@ -1043,9 +1102,10 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile.flush();
 #endif
             fSerial = (FrameSerialNumber*)Buffer;
-            // m_Oasis_Settings.sSerial.assign((char*)(fSerial->data));
+            // m_Oasis_Settings.sSerial.assign((char*)(fSerial->data), FRAME_NAME_LEN);
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_SERIAL_NUMBER FrameSerialNumberAck m_Oasis_Settings.sSerial = " << m_Oasis_Settings.sSerial << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_SERIAL_NUMBER FrameSerialNumberAck fSerial->data = " << fSerial->data << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_SERIAL_NUMBER We're not using this." << std::endl;
             m_sLogFile.flush();
 #endif
             break;
@@ -1053,6 +1113,13 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
         case  CODE_GET_FRIENDLY_NAME :
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_FRIENDLY_NAME" << std::endl;
+            m_sLogFile.flush();
+#endif
+            fFriendlyName = (FrameFriendlyName*)Buffer;
+            sTmp.assign((char*)(fFriendlyName->data));
+            m_Oasis_Settings.sFriendlyName = trim(sTmp,"\n\r ");
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_FRIENDLY_NAME m_Oasis_Settings.sFriendlyName '" << m_Oasis_Settings.sFriendlyName <<"'"<< std::endl;
             m_sLogFile.flush();
 #endif
             break;
@@ -1067,6 +1134,13 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
         case  CODE_GET_BLUETOOTH_NAME :
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_BLUETOOTH_NAME" << std::endl;
+            m_sLogFile.flush();
+#endif
+            fBluetoothName = (FrameBluetoothName*)Buffer;
+            sTmp.assign((char*)(fBluetoothName->data));
+            m_Oasis_Settings.sBluetoothName = trim(sTmp,"\n\r ");
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_BLUETOOTH_NAME m_Oasis_Settings.sBluetoothName '" << m_Oasis_Settings.sBluetoothName << "'" << std::endl;
             m_sLogFile.flush();
 #endif
             break;
@@ -1113,15 +1187,15 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
 #endif
             fConfig = (FrameConfig*)Buffer;
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->mask              = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->mask) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->maxStep           = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->maxStep) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->backlash          = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->backlash) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->backlashDirection = " << std::dec << fConfig->backlashDirection << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->reverseDirection  = " << std::dec << fConfig->reverseDirection << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->speed             = " << std::hex << fConfig->speed << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->beepOnMove        = " << std::hex << fConfig->beepOnMove << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->beepOnStartup     = " << std::hex << fConfig->beepOnStartup << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fConfig->bluetoothOn       = " << std::hex << fConfig->bluetoothOn << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->mask              = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->mask) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->maxStep           = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->maxStep) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->backlash          = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->backlash) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->backlashDirection = " << std::dec << (fConfig->backlashDirection?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->reverseDirection  = " << std::dec << (fConfig->reverseDirection?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->speed             = " << std::dec << std::to_string(fConfig->speed) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->beepOnMove        = " << std::dec << (fConfig->beepOnMove?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->beepOnStartup     = " << std::hex << (fConfig->beepOnStartup?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->bluetoothOn       = " << std::hex << (fConfig->bluetoothOn?0:1) << std::endl;
             m_sLogFile.flush();
 #endif
 
@@ -1137,7 +1211,7 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
 
         case  CODE_SET_CONFIG :
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_SET_CONFIG" << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_SET_CONFIG received" << std::endl;
             m_sLogFile.flush();
 #endif
             break;
@@ -1152,16 +1226,21 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->position             = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fStatus->position) << std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->temperatureInt       = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fStatus->temperatureInt) << std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->temperatureExt       = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fStatus->temperatureExt) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->temperatureDetection = " << std::dec << fStatus->temperatureDetection << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->moving               = " << std::dec << fStatus->moving << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->temperatureDetection = " << std::dec << std::to_string(fStatus->temperatureDetection) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_STATUS FrameStatusAck fStatus->moving               = " << std::dec << std::to_string(fStatus->moving) << std::endl;
             m_sLogFile.flush();
 #endif
 
             m_Oasis_Settings.bIsMoving = (fStatus->moving==0?false:true);
             m_Oasis_Settings.nCurPos = ntohl(fStatus->position);
             m_Oasis_Settings.fInternal = ntohl(fStatus->temperatureInt) * 0.01;
-            if(fStatus->temperatureDetection == 1) //external probe present
+            if(fStatus->temperatureDetection == 1) {//external probe present
+                m_Oasis_Settings.bExternalSensorPresent = true;
                 m_Oasis_Settings.fAmbient = ntohl(fStatus->temperatureExt) * 0.0625f * 100 + 0.5;
+            }
+            else
+                m_Oasis_Settings.bExternalSensorPresent = false;
+
             break;
 
         case  CODE_CMD_FACTORY_RESET :
@@ -1216,22 +1295,24 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
 
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nCurPos             : " << std::dec << m_Oasis_Settings.nCurPos<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nMaxPos             : " << std::dec << m_Oasis_Settings.nMaxPos<< std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nCurPos             : " << std::dec << m_Oasis_Settings.nCurPos << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nMaxPos             : " << std::dec << m_Oasis_Settings.nMaxPos << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bIsMoving           : " << ( m_Oasis_Settings.bIsMoving ?"Yes":"No") << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bIsReversed         : " << ( m_Oasis_Settings.bIsReversed ?"Yes":"No") << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sVersion            : " << m_Oasis_Settings.sVersion<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sModel              : " << m_Oasis_Settings.sModel<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sSerial             : " << m_Oasis_Settings.sSerial<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nBackstep           : " << std::dec << m_Oasis_Settings.nBackstep<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nBacklash           : " << std::dec << m_Oasis_Settings.nCurPos<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.fInternal           : " << m_Oasis_Settings.fInternal<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.fAmbient            : " << m_Oasis_Settings.fAmbient<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlash            : " << std::dec << m_Oasis_Settings.backlash<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlashDirection   : " << m_Oasis_Settings.backlashDirection<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.speed               : " << m_Oasis_Settings.speed<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnStartup       : " << m_Oasis_Settings.beepOnStartup<< std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bluetoothOn         : " << m_Oasis_Settings.bluetoothOn<< std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sVersion            : " << m_Oasis_Settings.sVersion << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sModel              : " << m_Oasis_Settings.sModel << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sSerial             : " << m_Oasis_Settings.sSerial << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nBackstep           : " << std::dec << m_Oasis_Settings.nBackstep << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nBacklash           : " << std::dec << m_Oasis_Settings.nCurPos << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.fInternal           : " << m_Oasis_Settings.fInternal << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.fAmbient            : " << m_Oasis_Settings.fAmbient << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlash            : " << std::dec << m_Oasis_Settings.backlash << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlashDirection   : " << (m_Oasis_Settings.backlashDirection?0:1) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.speed               : " << std::to_string(m_Oasis_Settings.speed) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnStartup       : " << (m_Oasis_Settings.beepOnStartup?0:1) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bluetoothOn         : " << (m_Oasis_Settings.bluetoothOn?0:1) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sBluetoothName      : " <<  m_Oasis_Settings.sBluetoothName << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sFriendlyName       : " <<  m_Oasis_Settings.sFriendlyName << std::endl;
     m_sLogFile.flush();
 #endif
 
@@ -1275,6 +1356,22 @@ int COasisController::GetNTCTemperature(int ad)
     return (int)(T * 100);
 }
 
+std::string& COasisController::trim(std::string &str, const std::string& filter )
+{
+    return ltrim(rtrim(str, filter), filter);
+}
+
+std::string& COasisController::ltrim(std::string& str, const std::string& filter)
+{
+    str.erase(0, str.find_first_not_of(filter));
+    return str;
+}
+
+std::string& COasisController::rtrim(std::string& str, const std::string& filter)
+{
+    str.erase(str.find_last_not_of(filter) + 1);
+    return str;
+}
 
 #ifdef PLUGIN_DEBUG
 void  COasisController::hexdump(const byte *inputData, int inputSize,  std::string &outHex)
