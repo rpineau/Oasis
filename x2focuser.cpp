@@ -94,9 +94,9 @@ int	X2Focuser::queryAbstraction(const char* pszName, void** ppVal)
 void X2Focuser::driverInfoDetailedInfo(BasicStringInterface& str) const
 {
 #ifdef PLUGIN_DEBUG
-    str = "Takahashi Active Focuser Focuser X2 plugin by Rodolphe Pineau [DEBUG]";
+    str = "Astroasis Oasis Focuser X2 plugin by Rodolphe Pineau [DEBUG]";
 #else
-    str = "Takahashi Active Focuser Focuser X2 plugin by Rodolphe Pineau";
+    str = "Astroasis Oasis Focuser X2 plugin by Rodolphe Pineau";
 #endif
 }
 
@@ -107,7 +107,7 @@ double X2Focuser::driverInfoVersion(void) const
 
 void X2Focuser::deviceInfoNameShort(BasicStringInterface& str) const
 {
-    str="Takahashi Active Focuser";
+    str="Astroasis Oasis";
 }
 
 void X2Focuser::deviceInfoNameLong(BasicStringInterface& str) const
@@ -117,7 +117,7 @@ void X2Focuser::deviceInfoNameLong(BasicStringInterface& str) const
 
 void X2Focuser::deviceInfoDetailedDescription(BasicStringInterface& str) const
 {
-	str = "Takahashi Active Focuser";
+	str = "Astroasis Oasis";
 }
 
 void X2Focuser::deviceInfoFirmwareVersion(BasicStringInterface& str)
@@ -136,7 +136,12 @@ void X2Focuser::deviceInfoFirmwareVersion(BasicStringInterface& str)
 
 void X2Focuser::deviceInfoModel(BasicStringInterface& str)
 {
-    str="Takahashi Active Focuser";
+    std::string sModel;
+    str="Astroasis Oasis";
+    if(m_bLinked) {
+        m_OasisController.getModel(sModel);
+        str = sModel.c_str();
+    }
 }
 
 #pragma mark - LinkInterface

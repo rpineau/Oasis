@@ -7,7 +7,7 @@
 
 extern "C" PlugInExport int sbPlugInName2(BasicStringInterface& str)
 {
-	str = "Takahashi Active Focuser Plug In";
+	str = "Astroasis Oasis Focuser Plug In";
 
 	return 0;
 }
