@@ -724,7 +724,7 @@ int COasisController::setReverse(bool setReverse)
 
     DeclareFrame(FrameConfig, frameConfig  , CODE_SET_CONFIG);
     frameConfig.mask = htonl(MASK_REVERSE_DIRECTION);
-    frameConfig.reverseDirection = setReverse?0:1;
+    frameConfig.reverseDirection = setReverse?1:0;
     // clear buffer and set cHIDBuffer[0] to report ID 0
     memset(cHIDBuffer, 0, REPORT_SIZE);
     memcpy(cHIDBuffer+1, (byte*)&frameConfig, sizeof(FrameConfig));
@@ -768,7 +768,7 @@ int COasisController::setSpeed(unsigned int nSpeed)
 
 bool COasisController::getBeepOnMove()
 {
-    return m_Oasis_Settings.beepOnMove;
+    return m_Oasis_Settings.beepOnMove==1;
 }
 
 int COasisController::setBeepOnMove(bool bEnabled)
@@ -798,7 +798,7 @@ int COasisController::setBeepOnMove(bool bEnabled)
 
 bool COasisController::getBeepOnStartup()
 {
-    return m_Oasis_Settings.beepOnStartup;
+    return m_Oasis_Settings.beepOnStartup==1;
 }
 
 int COasisController::setBeepOnStartup(bool bEnabled)
@@ -828,7 +828,7 @@ int COasisController::setBeepOnStartup(bool bEnabled)
 
 bool COasisController::getBluetoothEnabled()
 {
-    return m_Oasis_Settings.bluetoothOn;
+    return m_Oasis_Settings.bluetoothOn==1;
 }
 
 int COasisController::setBluetoothEnabled(bool bEnabled)
@@ -1190,12 +1190,12 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->mask              = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->mask) << std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->maxStep           = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->maxStep) << std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->backlash          = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->backlash) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->backlashDirection = " << std::dec << (fConfig->backlashDirection?0:1) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->reverseDirection  = " << std::dec << (fConfig->reverseDirection?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->backlashDirection = " << std::dec << (fConfig->backlashDirection==0?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->reverseDirection  = " << std::dec << (fConfig->reverseDirection==0?0:1) << std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->speed             = " << std::dec << std::to_string(fConfig->speed) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->beepOnMove        = " << std::dec << (fConfig->beepOnMove?0:1) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->beepOnStartup     = " << std::hex << (fConfig->beepOnStartup?0:1) << std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->bluetoothOn       = " << std::hex << (fConfig->bluetoothOn?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->beepOnMove        = " << std::dec << (fConfig->beepOnMove==0?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->beepOnStartup     = " << std::hex << (fConfig->beepOnStartup==0?0:1) << std::endl;
+            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->bluetoothOn       = " << std::hex << (fConfig->bluetoothOn==0?0:1) << std::endl;
             m_sLogFile.flush();
 #endif
 
@@ -1306,12 +1306,12 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.nBacklash           : " << std::dec << m_Oasis_Settings.nCurPos << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.fInternal           : " << m_Oasis_Settings.fInternal << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.fAmbient            : " << m_Oasis_Settings.fAmbient << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlash            : " << std::dec << m_Oasis_Settings.backlash << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlashDirection   : " << (m_Oasis_Settings.backlashDirection?0:1) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlash            : " << std::to_string(m_Oasis_Settings.backlash) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.backlashDirection   : " << (m_Oasis_Settings.backlashDirection==0?"In":"Out") << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.speed               : " << std::to_string(m_Oasis_Settings.speed) << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnStartup       : " << (m_Oasis_Settings.beepOnStartup?0:1) << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnMove          : " << (m_Oasis_Settings.beepOnMove?0:1) << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bluetoothOn         : " << (m_Oasis_Settings.bluetoothOn?0:1) << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnStartup       : " << (m_Oasis_Settings.beepOnStartup==1?"Enable":"Disable") << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.beepOnMove          : " << (m_Oasis_Settings.beepOnMove==1?"Enable":"Disable") << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.bluetoothOn         : " << (m_Oasis_Settings.bluetoothOn==1?"On":"Off") << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sBluetoothName      : " <<  m_Oasis_Settings.sBluetoothName << std::endl;
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] m_Oasis_Settings.sFriendlyName       : " <<  m_Oasis_Settings.sFriendlyName << std::endl;
     m_sLogFile.flush();

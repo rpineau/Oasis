@@ -343,10 +343,9 @@ int X2Focuser::doOasisFocuserFeatureConfig()
         dx->setChecked("reverseDir", m_OasisController.getReverse());
         dx->setPropertyInt("backlashSteps", "value", m_OasisController.getBacklash());
         dx->setChecked("radioButton", m_OasisController.getBacklashDirection() == 0?true:false);
-        dx->setChecked("radioButton_2", m_OasisController.getBacklashDirection() == 1?true:false);
-        dx->setChecked("beepOnConnect", m_OasisController.getBeepOnStartup());
-        dx->setChecked("beepOnMove", m_OasisController.getBeepOnMove());
-        dx->setChecked("checkBox_3", m_OasisController.getBluetoothEnabled());
+        dx->setChecked("beepOnConnect", m_OasisController.getBeepOnStartup()?1:0);
+        dx->setChecked("beepOnMove", m_OasisController.getBeepOnMove()?1:0);
+        dx->setChecked("bluetoothEnable", m_OasisController.getBluetoothEnabled()?1:0);
         m_OasisController.getBluetoothName(sBluetoothName);
         dx->setText("bluetoothName", sBluetoothName.c_str());
         m_OasisController.getFriendlyName(sFriendlyName);
@@ -364,7 +363,7 @@ int X2Focuser::doOasisFocuserFeatureConfig()
         dx->setEnabled("radioButton_2", false);
         dx->setEnabled("beepOnConnect", false);
         dx->setEnabled("beepOnMove", false);
-        dx->setEnabled("checkBox_3", false);
+        dx->setEnabled("bluetoothEnable", false);
         dx->setEnabled("bluetoothName", false);
         dx->setEnabled("friendlyName", false);
     }
