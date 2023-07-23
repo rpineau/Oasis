@@ -10,6 +10,7 @@
 #define __Oasis__
 
 #include <string.h>
+#include <math.h>
 
 #ifdef SB_MAC_BUILD
 #include <unistd.h>
