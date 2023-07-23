@@ -299,7 +299,6 @@ int X2Focuser::doOasisFocuserFeatureConfig()
     X2GUIExchangeInterface*            dx = NULL;//Comes after ui is loaded
     bool bPressedOK = false;
     std::stringstream sTmpBuf;
-    std::string sTmp;
     int nTmp;
     std::string sFriendlyName;
     std::string sBluetoothName;
@@ -393,16 +392,10 @@ int X2Focuser::doOasisFocuserFeatureConfig()
 
         memset(szTmpBuf,0,FRAME_NAME_LEN+1);
         dx->propertyString("bluetoothName", "text", szTmpBuf, FRAME_NAME_LEN);
-        sTmp.assign(szTmpBuf);
-        m_OasisController.logToFile(sTmp);
-        m_OasisController.logToFile(sBluetoothName);
         m_OasisController.setBluetoothName(std::string(szTmpBuf));
 
         memset(szTmpBuf,0,FRAME_NAME_LEN+1);
         dx->propertyString("friendlyName", "text", szTmpBuf, FRAME_NAME_LEN);
-        sTmp.assign(szTmpBuf);
-        m_OasisController.logToFile(sTmp);
-        m_OasisController.logToFile(sFriendlyName);
         m_OasisController.setFriendlyName(std::string(szTmpBuf));
 
         m_OasisController.getConfig();
