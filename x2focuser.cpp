@@ -272,11 +272,11 @@ void X2Focuser::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
         case SETTINGS:
             if (!strcmp(pszEvent, "on_timer")) {
                 if(m_bLinked) {
-                    sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
+                    sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << " ºC";
                     uiex->setText("focuserTemp", sTmpBuf.str().c_str());
                     if(m_OasisController.isExternalSensorPresent()) {
                         std::stringstream().swap(sTmpBuf);
-                        sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << "ºC";
+                        sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << " ºC";
                         uiex->setText("probeTemp", sTmpBuf.str().c_str());
                     }
                 }
@@ -329,17 +329,17 @@ int X2Focuser::doOasisFocuserFeatureConfig()
             dx->comboBoxAppendString("comboBox", "External");
             nTmp = m_OasisController.getTemperatureSource();
             dx->setCurrentIndex("comboBox", nTmp==INTERNAL?0:1);
-            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
+            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << " ºC";
             dx->setText("internalTemp", sTmpBuf.str().c_str());
 
             std::stringstream().swap(sTmpBuf);
-            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << "ºC";
+            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(EXTERNAL) << " ºC";
             dx->setText("probeTemp", sTmpBuf.str().c_str());
         }
         else {
             dx->comboBoxAppendString("comboBox", "Internal");
             dx->setCurrentIndex("comboBox", 0);
-            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
+            sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << " ºC";
             dx->setText("internalTemp", sTmpBuf.str().c_str());
             dx->setText("probeTemp", "Not present");
             dx->setEnabled("comboBox", false);
