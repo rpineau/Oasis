@@ -1051,7 +1051,7 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
     int nTmp;
     char cTmp[64];
     std::string sTmp;
-
+    int temperatureExt;
     byte nCode;
     FrameConfig *fConfig;
     FrameStatusAck *fStatus;
@@ -1233,10 +1233,12 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
 
             m_Oasis_Settings.bIsMoving = (fStatus->moving==0?false:true);
             m_Oasis_Settings.nCurPos = ntohl(fStatus->position);
-            m_Oasis_Settings.fInternal = ntohl(fStatus->temperatureInt) * 0.01;
+            m_Oasis_Settings.fInternal = GetNTCTemperature(ntohl(fStatus->temperatureInt)) * 0.01;
             if(fStatus->temperatureDetection == 1) {//external probe present
                 m_Oasis_Settings.bExternalSensorPresent = true;
-                m_Oasis_Settings.fAmbient = ntohl(fStatus->temperatureExt) * 0.0625f * 100 + 0.5;
+                temperatureExt = ntohl(fStatus->temperatureExt);
+                temperatureExt = (int)(short)(temperatureExt & 0xFFFF);
+                m_Oasis_Settings.fAmbient =  (temperatureExt * 0.0625f * 100 + 0.5) * 0.01;
             }
             else
                 m_Oasis_Settings.bExternalSensorPresent = false;
@@ -1346,13 +1348,38 @@ int COasisController::sendSettings()
 
 int COasisController::GetNTCTemperature(int ad)
 {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] ad = " << ad << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] AD_MAX = " << AD_MAX << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] B = " << B << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] T25 = " << T25 << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] K = " << K << std::endl;
+    m_sLogFile.flush();
+#endif
+
     if (ad <= 0)
         ad = 1;
     else if (ad >= AD_MAX)
         ad = AD_MAX - 1;
 
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] after boundary check ad = " << ad << std::endl;
+    m_sLogFile.flush();
+#endif
+
     float T = (float)(B / (log((AD_MAX - ad) / (float)ad) + B / T25) - K);
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] T = " << T << std::endl;
+    m_sLogFile.flush();
+#endif
+
     T += (T >= 0) ? 0.005f : -0.005f;
+
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature] adjusted T = " << T << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [GetNTCTemperature]  T *100 = " << T*100 << std::endl;
+    m_sLogFile.flush();
+#endif
 
     return (int)(T * 100);
 }

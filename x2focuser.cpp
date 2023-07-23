@@ -43,7 +43,7 @@ X2Focuser::X2Focuser(const char* pszDisplayName,
 
 
     if (m_pIniUtil) {
-        m_OasisController.setTemperatureSource(m_pIniUtil->readInt(KEY_X2FOC_ROOT, TEMP_SOURCE, INTERNAL));
+        m_OasisController.setTemperatureSource(m_pIniUtil->readInt(m_sFocuserSerial.c_str(), TEMP_SOURCE, INTERNAL));
     }
 }
 
@@ -333,6 +333,8 @@ int X2Focuser::doOasisFocuserFeatureConfig()
             dx->setText("probeTemp", sTmpBuf.str().c_str());
         }
         else {
+            dx->comboBoxAppendString("comboBox", "Internal");
+            dx->setCurrentIndex("comboBox", 0);
             sTmpBuf << std::fixed << std::setprecision(2) << m_OasisController.getTemperature(INTERNAL) << "ºC";
             dx->setText("internalTemp", sTmpBuf.str().c_str());
             dx->setText("probeTemp", "Not present");
@@ -379,6 +381,7 @@ int X2Focuser::doOasisFocuserFeatureConfig()
         nTmp = dx->currentIndex("comboBox");
         m_OasisController.setTemperatureSource(nTmp==0?INTERNAL:EXTERNAL);
         m_pIniUtil->writeInt(m_sFocuserSerial.c_str(), TEMP_SOURCE, nTmp==0?INTERNAL:EXTERNAL);
+
         m_OasisController.setReverse(dx->isChecked("reverseDir")==1);
         dx->propertyInt("backlashSteps", "value", nTmp);
         m_OasisController.setBacklash(nTmp);
