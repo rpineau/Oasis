@@ -289,6 +289,9 @@ int COasisController::Connect()
 #endif
     }
 
+    if(m_Oasis_Settings.bExternalSensorPresent)
+        setTemperatureSource(EXTERNAL);
+
     return nErr;
 }
 
