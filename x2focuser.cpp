@@ -386,26 +386,50 @@ int X2Focuser::doOasisFocuserFeatureConfig()
         m_OasisController.setTemperatureSource(nTmp==0?INTERNAL:EXTERNAL);
         m_pIniUtil->writeInt(m_sFocuserSerial.c_str(), TEMP_SOURCE, nTmp==0?INTERNAL:EXTERNAL);
 
-        m_OasisController.setReverse(dx->isChecked("reverseDir")==1);
+        nErr = m_OasisController.setReverse(dx->isChecked("reverseDir")==1);
+        if(nErr) // retry
+            nErr = m_OasisController.setReverse(dx->isChecked("reverseDir")==1);
         dx->propertyInt("backlashSteps", "value", nTmp);
-        m_OasisController.setBacklash(nTmp);
-        m_OasisController.setBacklashDirection( dx->isChecked("radioButton")==1?0:1 );
 
-        m_OasisController.setBeepOnStartup( dx->isChecked("beepOnConnect")==1?true:false );
-        m_OasisController.setBeepOnMove( dx->isChecked("beepOnMove")==1?true:false );
-        m_OasisController.setBluetoothEnabled( dx->isChecked("bluetoothEnable")==1?true:false );
+        nErr = m_OasisController.setBacklash(nTmp);
+        if(nErr) // retry
+            nErr = m_OasisController.setBacklash(nTmp);
+
+        nErr = m_OasisController.setBacklashDirection( dx->isChecked("radioButton")==1?0:1 );
+        if(nErr) // retry
+            nErr = m_OasisController.setBacklashDirection( dx->isChecked("radioButton")==1?0:1 );
+
+        nErr = m_OasisController.setBeepOnStartup( dx->isChecked("beepOnConnect")==1?true:false );
+        if(nErr) // retry
+            nErr = m_OasisController.setBeepOnStartup( dx->isChecked("beepOnConnect")==1?true:false );
+
+        nErr = m_OasisController.setBeepOnStartup( dx->isChecked("beepOnConnect")==1?true:false );
+        if(nErr) // retry
+            nErr = m_OasisController.setBeepOnStartup( dx->isChecked("beepOnConnect")==1?true:false );
+
+        nErr = m_OasisController.setBeepOnMove( dx->isChecked("beepOnMove")==1?true:false );
+        if(nErr) // retry
+            nErr = m_OasisController.setBeepOnMove( dx->isChecked("beepOnMove")==1?true:false );
+
+        nErr = m_OasisController.setBluetoothEnabled( dx->isChecked("bluetoothEnable")==1?true:false );
+        if(nErr) // retry
+            nErr = m_OasisController.setBluetoothEnabled( dx->isChecked("bluetoothEnable")==1?true:false );
 
         memset(szTmpBuf,0,FRAME_NAME_LEN+1);
         dx->propertyString("bluetoothName", "text", szTmpBuf, FRAME_NAME_LEN);
-        m_OasisController.setBluetoothName(std::string(szTmpBuf));
+        nErr = m_OasisController.setBluetoothName(std::string(szTmpBuf));
+        if(nErr) // retry
+            nErr = m_OasisController.setBluetoothName(std::string(szTmpBuf));
 
         memset(szTmpBuf,0,FRAME_NAME_LEN+1);
         dx->propertyString("friendlyName", "text", szTmpBuf, FRAME_NAME_LEN);
-        m_OasisController.setFriendlyName(std::string(szTmpBuf));
+        nErr = m_OasisController.setFriendlyName(std::string(szTmpBuf));
+        if(nErr) // retry
+            nErr = m_OasisController.setBluetoothName(std::string(szTmpBuf));
 
-        m_OasisController.getConfig();
-        m_OasisController.getBluetoothName();
-        m_OasisController.getFriendlyName();
+        nErr = m_OasisController.getConfig();
+        nErr = m_OasisController.getBluetoothName();
+        nErr = m_OasisController.getFriendlyName();
         nErr = SB_OK;
     }
     return nErr;

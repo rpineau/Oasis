@@ -34,13 +34,13 @@ void threaded_poller(std::future<void> futureObj, COasisController *OasisControl
     while (futureObj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout) {
         if(hidDevice && OasisControllerObj && OasisControllerObj->m_DevAccessMutex.try_lock()) {
             nbRead = hid_read(hidDevice, cHIDBuffer, sizeof(cHIDBuffer));
+            OasisControllerObj->m_DevAccessMutex.unlock();
             if(nbRead>0){
                 OasisControllerObj->parseResponse(cHIDBuffer, nbRead);
             }
             else {
                 std::this_thread::yield();
             }
-            OasisControllerObj->m_DevAccessMutex.unlock();
         }
         else {
             std::this_thread::yield();
@@ -66,8 +66,34 @@ COasisController::COasisController()
     m_sSerialNumber.clear();
     m_DevHandle = nullptr;
 
-    memset((void*)&m_Oasis_Settings,0,sizeof(struct Oasis_setting_atom));
+    m_Oasis_Settings.nCurPos = 0;
+    m_Oasis_Settings.nMaxPos = 0;
+    m_Oasis_Settings.bIsMoving = false;
+    m_Oasis_Settings.bIsReversed = false;
+    m_Oasis_Settings.sVersion.clear();
+    m_Oasis_Settings.sModel.clear();
+    m_Oasis_Settings.sSerial.clear();
+    m_Oasis_Settings.nBackstep = 0;
+    m_Oasis_Settings.nBacklash = 0;
+    m_Oasis_Settings.fInternal = 0.0f;
+    m_Oasis_Settings.fAmbient = 0.0f;
+    m_Oasis_Settings.bExternalSensorPresent = false;
+    m_Oasis_Settings.backlash = 0;
+    m_Oasis_Settings.backlashDirection = 0;
+    m_Oasis_Settings.speed = 0;
+    m_Oasis_Settings.beepOnMove = false;
+    m_Oasis_Settings.beepOnStartup = false;
+    m_Oasis_Settings.bluetoothOn = false;
+    m_Oasis_Settings.sBluetoothName.clear();
+    m_Oasis_Settings.sFriendlyName.clear();
 
+
+    m_bGotconfig = false;
+    m_bGotBluetoothName = false;
+    m_bGotFriendlyName = false;
+    m_bGotModel = false;
+    m_bGotVersion = false;
+    
 #ifdef PLUGIN_DEBUG
 #if defined(SB_WIN_BUILD)
     m_sLogfilePath = getenv("HOMEDRIVE");
@@ -169,12 +195,12 @@ int COasisController::Connect()
     hid_set_nonblocking(m_DevHandle, 1);
     startThreads();
     nTimeout = 0;
-    while(m_Oasis_Settings.nMaxPos == 0) {
+    while(!m_bGotconfig) {
         getConfig();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::this_thread::yield();
         nTimeout++;
-        if(nTimeout>10) {
+        if(nTimeout>MAX_TIMEOUT) {
 #ifdef PLUGIN_DEBUG
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [Connect] timeout getting config" << std::endl;
             m_sLogFile.flush();
@@ -188,12 +214,12 @@ int COasisController::Connect()
     }
 
     nTimeout = 0;
-    while(m_Oasis_Settings.sVersion.size()==0){
+    while(!m_bGotVersion){
         getVersions();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::this_thread::yield();
         nTimeout++;
-        if(nTimeout>10) {
+        if(nTimeout>MAX_TIMEOUT) {
 #ifdef PLUGIN_DEBUG
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [Connect] timeout getting version" << std::endl;
             m_sLogFile.flush();
@@ -207,7 +233,7 @@ int COasisController::Connect()
     }
 
     nTimeout = 0;
-    while(m_Oasis_Settings.sModel.size()==0){
+    while(!m_bGotModel){
         getModel();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::this_thread::yield();
@@ -226,12 +252,12 @@ int COasisController::Connect()
     }
 
     nTimeout = 0;
-    while(m_Oasis_Settings.sBluetoothName.size()==0){
+    while(!m_bGotBluetoothName){
         getBluetoothName();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::this_thread::yield();
         nTimeout++;
-        if(nTimeout>10) {
+        if(nTimeout>MAX_TIMEOUT) {
 #ifdef PLUGIN_DEBUG
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [Connect] timeout getting Bluetooth name" << std::endl;
             m_sLogFile.flush();
@@ -245,12 +271,12 @@ int COasisController::Connect()
     }
 
     nTimeout = 0;
-    while(m_Oasis_Settings.sFriendlyName.size()==0){
+    while(!m_bGotFriendlyName){
         getFriendlyName();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::this_thread::yield();
         nTimeout++;
-        if(nTimeout>10) {
+        if(nTimeout>MAX_TIMEOUT) {
 #ifdef PLUGIN_DEBUG
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [Connect] timeout getting Friendly name" << std::endl;
             m_sLogFile.flush();
@@ -305,7 +331,7 @@ int COasisController::sendCommand(byte *cHIDBuffer)
     m_sLogFile.flush();
 #endif
     nNbTimeOut = 0;
-    while(nNbTimeOut < 3) {
+    while(nNbTimeOut < MAX_TIMEOUT) {
         if(m_DevAccessMutex.try_lock()) {
             nByteWriten = hid_write(m_DevHandle, cHIDBuffer, REPORT_SIZE);
             m_DevAccessMutex.unlock();
@@ -324,7 +350,7 @@ int COasisController::sendCommand(byte *cHIDBuffer)
         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread in case we got an error
     }
 
-    if(nNbTimeOut>=3) {
+    if(nNbTimeOut>=MAX_TIMEOUT) {
 #ifdef PLUGIN_DEBUG
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [sendCommand] ERROR Timeout sending command : " << std::endl;
         m_sLogFile.flush();
@@ -635,7 +661,7 @@ int COasisController::getSerial()
     m_sLogFile.flush();
 #endif
     nNbTimeOut = 0;
-    while(nNbTimeOut < 3) {
+    while(nNbTimeOut < MAX_TIMEOUT) {
         if(m_DevAccessMutex.try_lock()) {
             nErr = hid_get_serial_number_string(m_DevHandle, TmpStr, sizeof(TmpStr)/sizeof(wchar_t) );
             m_DevAccessMutex.unlock();
@@ -1135,9 +1161,6 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
 
     // locking the mutex to prevent access while we're accessing to the data.
     const std::lock_guard<std::mutex> lock(m_GlobalMutex);
-    int nTmp;
-    char cTmp[64];
-    std::string sTmp;
     int temperatureExt;
     byte nCode;
     FrameConfig *fConfig;
@@ -1160,17 +1183,11 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_PRODUCT_MODEL" << std::endl;
             m_sLogFile.flush();
 #endif
+            m_bGotModel = true;
             fModel = (FrameProductModelAck*)Buffer;
-            m_Oasis_Settings.sModel.assign((char*)(fModel->data));
-            sTmp.assign((char*)(fModel->data));
-            sTmp = trim(sTmp,"\n\r ");
+            m_Oasis_Settings.sModel.assign((char*)fModel->data);
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_PRODUCT_MODEL fModel->data  '" << fModel->data <<"'"<< std::endl;
-            m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_PRODUCT_MODEL sTmp          '" << sTmp <<"'"<< std::endl;
-            m_sLogFile.flush();
-#endif
-            //m_Oasis_Settings.sModel.assign(sTmp);
-#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_PRODUCT_MODEL m_Oasis_Settings.sModel '" << m_Oasis_Settings.sModel <<"'"<< std::endl;
             m_sLogFile.flush();
 #endif
@@ -1181,6 +1198,7 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_VERSION" << std::endl;
             m_sLogFile.flush();
 #endif
+            m_bGotVersion = true;
             fVersions = (FrameVersionAck *)Buffer;
             m_Oasis_Settings.sVersion.assign(std::to_string((ntohl(fVersions->firmware & 0xFF000000))>>24) + "." +
             std::to_string((fVersions->firmware & 0x00FF0000)>>16) + "." +
@@ -1217,9 +1235,9 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_FRIENDLY_NAME" << std::endl;
             m_sLogFile.flush();
 #endif
+            m_bGotFriendlyName= true;
             fFriendlyName = (FrameFriendlyName*)Buffer;
-            sTmp.assign((char*)(fFriendlyName->data));
-            m_Oasis_Settings.sFriendlyName.assign(trim(sTmp,"\n\r "));
+            m_Oasis_Settings.sFriendlyName.assign((char*)(fFriendlyName->data));
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_FRIENDLY_NAME fFriendlyName->data            '" << fFriendlyName->data <<"'"<< std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_FRIENDLY_NAME m_Oasis_Settings.sFriendlyName '" << m_Oasis_Settings.sFriendlyName <<"'"<< std::endl;
@@ -1239,9 +1257,9 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_BLUETOOTH_NAME" << std::endl;
             m_sLogFile.flush();
 #endif
+            m_bGotBluetoothName = true;
             fBluetoothName = (FrameBluetoothName*)Buffer;
-            sTmp.assign((char*)(fBluetoothName->data));
-            m_Oasis_Settings.sBluetoothName.assign(trim(sTmp,"\n\r "));
+            m_Oasis_Settings.sBluetoothName.assign((char*)(fBluetoothName->data));
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_BLUETOOTH_NAMEfBluetoothName->data             '" << fBluetoothName->data << "'" << std::endl;
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_BLUETOOTH_NAME m_Oasis_Settings.sBluetoothName '" << m_Oasis_Settings.sBluetoothName << "'" << std::endl;
@@ -1289,6 +1307,7 @@ void COasisController::parseResponse(byte *Buffer, int nLength)
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG" << std::endl;
             m_sLogFile.flush();
 #endif
+            m_bGotconfig = true;
             fConfig = (FrameConfig*)Buffer;
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 3
             m_sLogFile << "["<<getTimeStamp()<<"]"<< " [parseResponse] CODE_GET_CONFIG FrameConfig fConfig->mask              = " << std::setfill('0') << std::setw(8) << std::hex << ntohl(fConfig->mask) << std::endl;

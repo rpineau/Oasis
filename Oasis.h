@@ -42,9 +42,9 @@
 
 #define PLUGIN_VERSION      1.0
 
-#define PLUGIN_DEBUG 3
+// #define PLUGIN_DEBUG 3
 
-#define MAX_TIMEOUT         1000
+#define MAX_TIMEOUT         10
 #define REPORT_SIZE         65 // 64 byte buffer + report ID
 #define MAX_GOTO_RETRY      3   // 3 retiries on goto if the focuser didn't move
 
@@ -196,6 +196,12 @@ public:
     int         getVersions();
     int         getModel();
     int         getSerial();
+
+    std::atomic<bool>   m_bGotconfig;
+    std::atomic<bool>   m_bGotBluetoothName;
+    std::atomic<bool>   m_bGotFriendlyName;
+    std::atomic<bool>   m_bGotModel;
+    std::atomic<bool>   m_bGotVersion;
 
     std::mutex          m_GlobalMutex;
     std::mutex          m_DevAccessMutex;
