@@ -40,7 +40,7 @@
 #include "StopWatch.h"
 #include "protocol.h"
 
-#define PLUGIN_VERSION      1.10
+#define PLUGIN_VERSION      1.12
 
 // #define PLUGIN_DEBUG 3
 
@@ -232,6 +232,7 @@ protected:
 
     long                m_nTargetPos;
     bool                m_bPosLimitEnabled;
+    bool                m_bAborted;
     int                 m_nGotoTries;
 
     int                 m_nTempSource;

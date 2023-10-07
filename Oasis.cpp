@@ -61,6 +61,7 @@ COasisController::COasisController()
     m_bSetUserConf = false;
     
     m_ThreadsAreRunning = false;
+    m_bAborted = false;
     m_nGotoTries = 0;
 
     m_sSerialNumber.clear();
@@ -481,6 +482,11 @@ int COasisController::haltFocuser()
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
 
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [haltFocuser] called" << std::endl;
+    m_sLogFile.flush();
+#endif
+
     memset(cHIDBuffer, 0, REPORT_SIZE);
     if(m_Oasis_Settings.bIsMoving) {
         cHIDBuffer[0] = 0; // report ID
@@ -490,6 +496,7 @@ int COasisController::haltFocuser()
         nErr = sendCommand(cHIDBuffer);
     }
     m_nGotoTries = MAX_GOTO_RETRY+1; // prevent goto retries
+    m_bAborted = true;
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time to the thread to read the returned report
     return nErr;
@@ -517,6 +524,7 @@ int COasisController::gotoPosition(long nPos)
     memcpy(cHIDBuffer+1, (byte*)&frameMove, sizeof(FrameMoveTo));
 
     m_nTargetPos = nPos;
+    m_bAborted = false;
 
     #ifdef PLUGIN_DEBUG
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [gotoPosition] goto :  " << std::dec << nPos << " (0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << nPos <<")" << std::dec << std::endl;
@@ -556,6 +564,17 @@ int COasisController::isGoToComplete(bool &bComplete)
 
     if(!m_bIsConnected || !m_DevHandle)
         return ERR_COMMNOLINK;
+
+#ifdef PLUGIN_DEBUG
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [isGoToComplete] m_bAborted : " << (m_bAborted?"Yes":"No") << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    if(m_bAborted) {
+        bComplete = true;
+        m_bAborted = false;
+        return nErr;
+    }
 
     bComplete = false;
 
